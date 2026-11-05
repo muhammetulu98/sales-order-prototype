@@ -809,7 +809,7 @@ const submit = (asType?: number) => {
                   <Select v-if="line.units.length > 1" :model-value="line.unitPntr" @update:model-value="changeUnit(line, Number($event))">
                     <SelectTrigger class="h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem v-for="unit in line.units" :key="unit.pntr" :value="unit.pntr">{{ unit.name }} ({{ formatQuantity(unit.factor) }})</SelectItem>
+                      <SelectItem v-for="unit in line.units" :key="unit.pntr" :value="unit.pntr">{{ unit.factor === 1 ? unit.name : `${unit.name} (${formatQuantity(unit.factor)})` }}</SelectItem>
                     </SelectContent>
                   </Select>
                   <span v-else class="text-ink-muted">{{ line.unitName || "—" }}</span>
