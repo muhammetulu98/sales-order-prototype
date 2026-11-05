@@ -192,6 +192,8 @@ export interface ErpSalesOrderSavePayload {
   deliveryTypeCode?: string | null;
   /** Yalnız "Kendisi Alacak" teslimde: müşterinin mal alacağı depo. */
   pickupDepotNo?: number | null;
+  /** Nakliye: Timon'a ait (dahil) / müşteriye ait (hariç); seçilmediyse null. */
+  freightMode?: "included" | "excluded" | null;
   /** Yalnız "Ambar" teslimde: nakliye ambarı carisi (cari kartından gelir, değiştirilebilir). */
   forwarderCode?: string | null;
   deliveryDate?: string | null;

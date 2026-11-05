@@ -91,6 +91,8 @@ const DUE_DAY_OPTIONS = [0, 30, 60, 90, 120, 150, 180, 210];
 const dueDaysLabel = (days: number) => (days === 0 ? "Peşin" : `${days} gün`);
 const dueDateInput = ref("");
 const deliveryTypeCode = ref(NONE);
+// Nakliye: Dahil (Timon öder) / Hariç; seçilmeden bırakılabilir.
+const freightMode = ref<"included" | "excluded" | "">("");
 // "Kendisi Alacak" seçilince müşterinin mal alacağı depo da seçilir.
 const SELF_PICKUP = "SELF_PICKUP";
 const pickupDepotNo = ref<number | null>(null);
@@ -326,6 +328,30 @@ const sellableShort = (line: EditorLine) => {
   const factor = line.units.find((unit) => unit.pntr === line.unitPntr)?.factor ?? 1;
   return line.quantity * factor > line.sellableQuantity;
 };
+// ── Miktar özeti (köşe kutusu): satırlar temel birime (adet) çevrilip koli / palet olarak yazılır ──
+// 100 adet girilmiş, koli içi 10 ise → 10 koli (hangi birimle girilirse girilsin aynı sonuç).
+const unitFactorByName = (line: EditorLine, name: string) => line.units.find((unit) => unit.name.toLocaleLowerCase("tr") === name)?.factor ?? null;
+const baseQuantityOf = (line: EditorLine) => line.quantity * (line.units.find((unit) => unit.pntr === line.unitPntr)?.factor ?? 1);
+const round2Qty = (value: number) => Math.round(value * 100) / 100;
+const packRows = computed(() =>
+  lines.value.map((line) => {
+    const base = baseQuantityOf(line);
+    const caseFactor = unitFactorByName(line, "koli");
+    const palletFactor = unitFactorByName(line, "palet");
+    return {
+      name: line.productName, code: line.productCode, base,
+      cases: caseFactor ? round2Qty(base / caseFactor) : null,
+      pallets: palletFactor ? round2Qty(base / palletFactor) : null,
+    };
+  }),
+);
+const packTotals = computed(() => ({
+  base: packRows.value.reduce((sum, row) => sum + row.base, 0),
+  cases: round2Qty(packRows.value.reduce((sum, row) => sum + (row.cases ?? 0), 0)),
+  pallets: round2Qty(packRows.value.reduce((sum, row) => sum + (row.pallets ?? 0), 0)),
+  noCaseCount: packRows.value.filter((row) => row.cases === null).length,
+  noPalletCount: packRows.value.filter((row) => row.pallets === null).length,
+}));
 const removeLine = (index: number) => lines.value.splice(index, 1);
 
 // Satır vadesi: üstte seçilen ödeme planı (gün ya da nokta tarih) her satıra otomatik gelir.
@@ -370,8 +396,8 @@ watch(() => lines.value.map((line) => line.discount2), refreshLineDue);
 
 // ── Bütçe kutusu (sağ üst): sepet kârlılığı — Timon-B2B-Web `basketProfitability` mantığı ─────────
 // %10 ve üstü yeşil "Bütçe", altı kırmızı "Zarar". Tıklayınca kalem kalem döküm açılır.
-// [VARSAYIM] Nakliye yalnız "Timon Servis" teslimde Timon'a ait (dahil) sayılır.
-const budgetFreightIncluded = computed(() => deliveryTypeCode.value === "TIMON_SERVICE");
+// Nakliye Dahil/Hariç seçimi (Proje altındaki düğme): Dahil ise nakliye oranı bütçeden düşülür; seçilmemişse düşülmez.
+const budgetFreightIncluded = computed(() => freightMode.value === "included");
 const budget = computed(() =>
   calculateBasketBudget(
     lines.value.map((line) => ({
@@ -514,6 +540,7 @@ const submit = (asType?: number) => {
     paymentDueDate: dueKind.value === "date" ? dueDateInput.value : null,
     deliveryTypeCode: deliveryTypeCode.value === NONE ? null : deliveryTypeCode.value,
     pickupDepotNo: pickupDepotNo.value,
+    freightMode: freightMode.value || null,
     forwarderCode: forwarderCode.value || null,
     deliveryDate: deliveryDate.value || null,
     collectionDate: collectionDate.value || null,
@@ -578,7 +605,7 @@ const submit = (asType?: number) => {
           </div>
           <div class="space-y-1 border-t border-tier-highest px-4 py-3 text-[12px] text-ink-muted">
             <p>Eşik %{{ BUDGET_THRESHOLD_PERCENT }}: altı kırmızı (Zarar), eşit ve üstü yeşil (Bütçe).</p>
-            <p>Nakliye {{ budgetFreightIncluded ? "dahil (Timon Servis)" : "hariç (düşülmedi)" }}.</p>
+            <p>Nakliye {{ freightMode === "included" ? "dahil (bütçeden düşüldü)" : freightMode === "excluded" ? "hariç (düşülmedi)" : "seçilmedi (düşülmedi)" }}.</p>
             <p v-if="budget.unmatchedStockCodes.length">{{ budget.unmatchedStockCodes.length }} stok sözleşmesiz, hesaba girmedi: {{ budget.unmatchedStockCodes.join(", ") }}</p>
           </div>
         </PopoverContent>
@@ -655,11 +682,12 @@ const submit = (asType?: number) => {
             </SelectContent>
           </Select>
         </div>
-        <div class="space-y-1.5 lg:col-span-2">
-          <Label for="delivery-type">Teslim Türü</Label>
-          <div class="flex gap-2">
+        <div class="flex items-start gap-3 lg:col-span-2">
+          <div class="space-y-1.5">
+            <Label for="delivery-type">Teslim Türü</Label>
+            <div class="flex gap-2">
             <Select v-model="deliveryTypeCode">
-              <SelectTrigger id="delivery-type"><SelectValue placeholder="Seçilmedi" /></SelectTrigger>
+              <SelectTrigger id="delivery-type" class="w-[190px]"><SelectValue placeholder="Seçilmedi" /></SelectTrigger>
               <SelectContent>
                 <SelectItem :value="NONE">Seçilmedi</SelectItem>
                 <SelectItem v-for="item in lookups?.deliveryTypes ?? []" :key="item.code" :value="item.code">
@@ -690,6 +718,18 @@ const submit = (asType?: number) => {
           <p v-if="deliveryTypeCode === WAREHOUSE && customerCode" class="text-[12px] text-ink-muted" data-testid="forwarder-hint">
             {{ forwarderFromCard ? "Cari kartındaki ambar getirildi." : forwarderCode ? "Ambar elle değiştirildi." : "Cari kartında kayıtlı ambar yok — seçin." }}
           </p>
+                  </div>
+          <div class="w-[112px] shrink-0 space-y-1.5">
+            <Label for="freight-mode">Nakliye</Label>
+            <Select :model-value="freightMode || NONE" @update:model-value="freightMode = $event === NONE ? '' : ($event as 'included' | 'excluded')">
+              <SelectTrigger id="freight-mode" data-testid="freight-mode"><SelectValue placeholder="Seçin" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem :value="NONE">Seçilmedi</SelectItem>
+                <SelectItem value="included">Dahil</SelectItem>
+                <SelectItem value="excluded">Hariç</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-4">
             <div class="space-y-1.5">
@@ -751,28 +791,53 @@ const submit = (asType?: number) => {
 
     <Card>
       <CardContent class="space-y-3 p-4">
-        <div class="relative max-w-md">
-          <Label for="product-search">Satır Ekle</Label>
-          <div class="relative mt-1.5">
-            <Search class="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-            <Input id="product-search" v-model="productSearch" class="pl-8" :disabled="!!customerBlock" @keydown.enter.prevent="openPicker" :placeholder="customerBlock ? 'Cari uygun değil — stok eklenemez' : 'Stok kodu, ad veya barkod…'" @input="searchProducts" />
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div class="relative w-full max-w-md flex-1">
+            <Label for="product-search">Satır Ekle</Label>
+            <div class="relative mt-1.5">
+              <Search class="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
+              <Input id="product-search" v-model="productSearch" class="pl-8" :disabled="!!customerBlock" @keydown.enter.prevent="openPicker" :placeholder="customerBlock ? 'Cari uygun değil — stok eklenemez' : 'Stok kodu, ad veya barkod…'" @input="searchProducts" />
+            </div>
+            <div v-if="productResults.length" class="absolute z-20 mt-1 w-full rounded border border-tier-highest bg-paper shadow-sm">
+              <button
+                v-for="item in productResults" :key="item.code" type="button"
+                class="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13px] hover:bg-tier"
+                @click="addLine(item)"
+              >
+                <Plus class="size-3.5 shrink-0" />
+                <span class="font-mono tabular-nums">{{ item.code }}</span>
+                <span class="truncate">{{ item.name }}</span>
+                <span v-if="item.stockType" class="ml-auto shrink-0 text-[12px] text-ink-muted" data-testid="stock-type">
+                  <strong class="font-mono font-semibold" :class="item.stockType === 'H' ? 'text-emerald-700' : 'text-amber-700'">{{ item.stockType }}</strong>
+                  <template v-if="item.stockType === 'H'"> · Satılabilir: {{ formatQuantity(item.sellableQuantity ?? 0) }}</template>
+                </span>
+              </button>
+            </div>
+            <p v-if="productSearching" class="mt-1 text-[12px] text-ink-muted">Aranıyor…</p>
           </div>
-          <div v-if="productResults.length" class="absolute z-20 mt-1 w-full rounded border border-tier-highest bg-paper shadow-sm">
-            <button
-              v-for="item in productResults" :key="item.code" type="button"
-              class="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13px] hover:bg-tier"
-              @click="addLine(item)"
-            >
-              <Plus class="size-3.5 shrink-0" />
-              <span class="font-mono tabular-nums">{{ item.code }}</span>
-              <span class="truncate">{{ item.name }}</span>
-              <span v-if="item.stockType" class="ml-auto shrink-0 text-[12px] text-ink-muted" data-testid="stock-type">
-                <strong class="font-mono font-semibold" :class="item.stockType === 'H' ? 'text-emerald-700' : 'text-amber-700'">{{ item.stockType }}</strong>
-                <template v-if="item.stockType === 'H'"> · Satılabilir: {{ formatQuantity(item.sellableQuantity ?? 0) }}</template>
-              </span>
-            </button>
-          </div>
-          <p v-if="productSearching" class="mt-1 text-[12px] text-ink-muted">Aranıyor…</p>
+          <!-- Miktar özeti: arama kutusunun sağında; tıklayınca satır dökümü açılır. -->
+          <Popover v-if="lines.length">
+            <PopoverTrigger as-child>
+              <button type="button" data-testid="pack-summary" title="Satır dökümü için tıklayın" class="flex items-stretch divide-x divide-tier-highest overflow-hidden rounded border border-tier-highest bg-tier-low text-center hover:bg-tier">
+                <span class="flex items-center px-3 text-[11px] font-medium uppercase leading-tight tracking-wider text-ink-muted">Miktar<br>Özeti</span>
+                <span class="min-w-[84px] px-3 py-1.5"><span class="block text-[11px] uppercase tracking-wider text-ink-muted">Adet</span><span class="block font-mono text-[17px] font-semibold tabular-nums" data-testid="pack-total-base">{{ formatQuantity(packTotals.base) }}</span></span>
+                <span class="min-w-[84px] px-3 py-1.5"><span class="block text-[11px] uppercase tracking-wider text-ink-muted">Koli</span><span class="block font-mono text-[17px] font-semibold tabular-nums" data-testid="pack-total-cases">{{ formatQuantity(packTotals.cases) }}</span></span>
+                <span class="min-w-[84px] px-3 py-1.5"><span class="block text-[11px] uppercase tracking-wider text-ink-muted">Palet</span><span class="block font-mono text-[17px] font-semibold tabular-nums" data-testid="pack-total-pallets">{{ formatQuantity(packTotals.pallets) }}</span></span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" class="w-[380px] p-0">
+              <div class="border-b border-tier-highest px-4 py-3 text-[13px] font-medium text-ink">Miktar Özeti — satırlar</div>
+              <ul class="max-h-72 divide-y divide-tier-highest/60 overflow-y-auto text-[12px]" data-testid="pack-rows">
+                <li v-for="(row, index) in packRows" :key="index" class="px-4 py-2">
+                  <div class="truncate" :title="row.name">{{ row.name }}</div>
+                  <div class="font-mono tabular-nums text-ink-muted">{{ formatQuantity(row.base) }} adet · {{ row.cases === null ? "—" : formatQuantity(row.cases) }} koli · {{ row.pallets === null ? "—" : formatQuantity(row.pallets) }} palet</div>
+                </li>
+              </ul>
+              <p v-if="packTotals.noCaseCount || packTotals.noPalletCount" class="border-t border-tier-highest px-4 py-2 text-[11px] text-ink-muted">
+                {{ Math.max(packTotals.noCaseCount, packTotals.noPalletCount) }} satırın koli/palet birimi tanımlı değil, toplama girmedi.
+              </p>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div class="overflow-x-auto">
@@ -883,11 +948,23 @@ const submit = (asType?: number) => {
           </table>
         </div>
 
-        <div class="flex flex-wrap justify-end gap-6 border-t border-tier-highest pt-3 text-[13px]">
-          <div><span class="text-ink-muted">Ham Tutar:</span> <span class="font-mono tabular-nums">{{ formatMoney(totals.gross) }}</span></div>
-          <div><span class="text-ink-muted">İskonto:</span> <span class="font-mono tabular-nums">{{ formatMoney(totals.discount) }}</span></div>
-          <div><span class="text-ink-muted">KDV:</span> <span class="font-mono tabular-nums">{{ formatMoney(totals.tax) }}</span></div>
-          <div class="font-medium"><span class="text-ink-muted">Genel Toplam:</span> <span class="font-mono tabular-nums">{{ formatMoney(totals.net) }}</span></div>
+        <div class="flex flex-wrap items-stretch justify-end gap-3 border-t border-tier-highest pt-4" data-testid="order-totals">
+          <div class="min-w-[150px] rounded border border-tier-highest bg-tier-low px-4 py-2.5 text-right">
+            <div class="text-[11px] font-medium uppercase tracking-wider text-ink-muted">Ham Tutar</div>
+            <div class="font-mono text-[18px] font-semibold tabular-nums text-ink">{{ formatMoney(totals.gross) }}</div>
+          </div>
+          <div class="min-w-[150px] rounded border border-tier-highest bg-tier-low px-4 py-2.5 text-right">
+            <div class="text-[11px] font-medium uppercase tracking-wider text-ink-muted">İskonto</div>
+            <div class="font-mono text-[18px] font-semibold tabular-nums text-ink">{{ formatMoney(totals.discount) }}</div>
+          </div>
+          <div class="min-w-[150px] rounded border border-tier-highest bg-tier-low px-4 py-2.5 text-right">
+            <div class="text-[11px] font-medium uppercase tracking-wider text-ink-muted">KDV</div>
+            <div class="font-mono text-[18px] font-semibold tabular-nums text-ink">{{ formatMoney(totals.tax) }}</div>
+          </div>
+          <div class="min-w-[200px] rounded bg-graphite px-5 py-2.5 text-right text-white">
+            <div class="text-[11px] font-medium uppercase tracking-wider text-white/70">Genel Toplam</div>
+            <div class="font-mono text-[24px] font-semibold tabular-nums">{{ formatMoney(totals.net) }}</div>
+          </div>
         </div>
 
         <div class="grid gap-4 border-t border-tier-highest pt-3">

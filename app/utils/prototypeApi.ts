@@ -67,6 +67,7 @@ const budgetTermOf = (code: string) => {
     salesTermDays: term.sTerm, freightRatePercent: term.freight, contractSalesDiscountPercent: term.contractSales,
   };
 };
+const PALLET_CASES: Record<string, number> = { "111592": 20, "136194": 10, "241494": 25, "599526": 30, "354235": 40, "709341": 50 };
 const PRODUCTS = [
   { code: "111592", name: "Dilman Nöbet Defteri 96 Yaprak Ciltli", casePack: 24, price: 38.5, tax: 10, type: "H", sellable: 1850 },
   { code: "136194", name: "Dilman Fon Kartonu 9115 50*70 Karışık", casePack: 100, price: 12.9, tax: 10, type: "H", sellable: 9400 },
@@ -157,7 +158,11 @@ export const prototypeApi = (path: string, opts: { query?: Record<string, unknow
     return {
       code: product.code, name: product.name, defaultUnitPntr: 1,
       insertName: insert?.name ?? null, insertValidTo: insert?.to ?? null, budgetTerm: budgetTermOf(product.code),
-      units: [{ pntr: 1, name: "Adet", factor: 1 }, { pntr: 2, name: "Koli", factor: product.casePack }],
+      units: [
+        { pntr: 1, name: "Adet", factor: 1 }, { pntr: 2, name: "Koli", factor: product.casePack },
+        // Palet: palette sığan koli sayısı × koli içi (kurgu; stok başına değişir).
+        { pntr: 3, name: "Palet", factor: product.casePack * (PALLET_CASES[product.code] ?? 20) },
+      ],
       taxPntr: 1, taxPercent: product.tax, listPrice: product.price, discount1: product.discount1, priceListNo: 1,
       passive: false, salesStopped: false, physicalStateCode: null,
     };

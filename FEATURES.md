@@ -26,6 +26,7 @@ Yeni bir kural eklendiğinde bu dosyaya da işlenir. `[VARSAYIM]` = teyit bekley
 - **Evrak serisi ve sırası:** ekranda **gösterilmez**. İlk seri otomatik atanır, numarayı kayıt sırasında sistem verir.
 
 ### Diğer alanlar
+- **Nakliye:** küçük Dahil / Hariç seçimi (Teslim Türü'nün hemen yanında; "Seçilmedi" de var), zorunlu değil; bütçe kutusunu etkiler (bkz. Bütçe kutusu).
 - **Proje** (listeden), **Adres** (carinin adreslerinden; cari seçilince ilki gelir).
 - **Teslim Türü:** Ambar · Timon Servis · Müşteri Kamyonu · Kendisi Alacak.
   - **Ambar** seçilince cari kartında kayıtlı ambar varsa **otomatik gelir** ("Cari kartındaki ambar getirildi"); yoksa listeden seçilir. Cari değişince yeniden getirilir; elle değiştirilirse "Ambar elle değiştirildi" yazar.
@@ -74,7 +75,7 @@ Sütunlar: Stok Kodu · Barkod · Stok Adı · Birim · Miktar · Liste Fiyatı 
 - **Birim:** seçenekler katsayıyla yazılır — "Adet", "Koli (24)" (katsayısı 1 olan birimde sayı yazılmaz). Birim değişince liste fiyatı katsayıya göre yeniden hesaplanır.
 - **Miktar:** oklar 1'er artar (min. 1).
 - **Birim fiyat (iki yönlü):** iskontolar (kademeli) uygulanmış fiyat; KDV hariç üstte, KDV dahil altta. **İskonto yazılınca birim fiyat değişir; birim fiyat (hariç ya da dahil) yazılınca İsk 2 geri hesaplanır** (İsk 1/İsk 3/İsk 4 sabit; liste fiyatından yüksek fiyat yazılamaz, İsk 2 en az 0; İsk 2 2 ondalığa yuvarlanır). İsk 2 değişince satır vadesi ve bütçe de yeniden hesaplanır. `[VARSAYIM]` Fiyattan geri hesap İsk 2'ye yazılır. **Net tutar** da aynı şekilde (miktar × birim fiyat), hariç üstte / dahil altta.
-- **Toplamlar:** Ham Tutar · İskonto · KDV · Genel Toplam.
+- **Toplamlar:** Ham Tutar · İskonto · KDV · Genel Toplam — dört ayrı kutu (iri rakamlar); **Genel Toplam** koyu zeminde, daha büyük puntoyla öne çıkar.
 
 ### Satır vadesi
 - Üstte seçilen **ödeme planı** (gün ya da nokta tarih) her satıra **otomatik** gelir; plan değişince elle dokunulmamış satırlar planı izler.
@@ -96,9 +97,20 @@ Mantık, Timon-B2B-Web sipariş alırken kullanılan **sepet bütçesi** (`utils
 - Aynı tedarikçinin satırları brüt tutarla ağırlıklanır; sonra tedarikçilerin düz ortalaması alınır. Alış fiyatı hesaba girmez.
 - **Vade farkı katsayısı 0,15** (gün başına %0,15): satır vadesindeki İsk 2 ÷ 0,15 kuralının da kaynağı budur. Satır vadesi uzadıkça bütçe düşer.
 - Sözleşmesi olmayan stok hesaba girmez, detayda "N stok sözleşmesiz" yazar.
-- `[VARSAYIM]` Nakliye yalnız **Timon Servis** teslimde Timon'a ait (dahil) sayılır ve düşülür; Ambar, Müşteri Kamyonu, Kendisi Alacak'ta düşülmez.
+- **Nakliye Dahil / Hariç** seçimi (Teslim Türü'nün yanında): **Dahil** seçilirse stokun nakliye oranı bütçeden düşülür; **Hariç** ya da seçilmemişse düşülmez. Teslim türünden bağımsızdır, "Seçilmedi" ile seçim kalkar. Kayıtta `freightMode` (`included` / `excluded` / null) gider.
 - `[VARSAYIM]` Tam %10 yeşildir (B2B'deki gibi `>= 10`).
 - Veri: stok bilgisi yanıtında `budgetTerm` (tedarikçi kodu/adı, alış iskontosu, prim, alış vadesi, satış vadesi, nakliye oranı, sözleşme satış iskontosu). Mock'ta 10 tedarikçi, 272052 bilerek sözleşmesiz.
+
+---
+
+## 3c. Miktar özeti (satır kartının sağ üstü)
+
+- Satır eklenince "Satır Ekle" arama kutusunun **sağında** (satır kartının sağ üst boşluğunda, ekranda yer kaplamadan) **"Miktar Özeti"** kutusu çıkar: toplam **Adet · Koli · Palet**. Satır yokken görünmez.
+- Her satır **temel birime (adet) çevrilir**, sonra stokun koli ve palet katsayısına bölünür: **hangi birimle girilirse girilsin aynı sonuç**. Örnek: 100 adet girildi, koli içi 10 ise **10 koli** yazar (240 adet / koli içi 24 → 10 koli, palet 480 ise 0,5 palet).
+- Kutuya tıklayınca **satır satır döküm** açılır ("240 adet · 10 koli · 0,5 palet").
+- Koli ya da palet birimi tanımlı olmayan satır toplama girmez, dökümde "N satırın koli/palet birimi tanımlı değil" notu çıkar.
+- Küsurat 2 ondalığa yuvarlanır (ör. 0,5 palet). Birim bulunuşu adından yapılır: "Koli", "Palet".
+- Veri: stok satış bilgisindeki birimler (`units`: Adet 1, Koli, Palet + katsayıları). Mock'ta her stoğa Palet birimi eklendi.
 
 ---
 
@@ -115,7 +127,7 @@ Mantık, Timon-B2B-Web sipariş alırken kullanılan **sepet bütçesi** (`utils
 
 - Prototip kabuğu: koyu üst bar, sidebar yok.
 - Sayfadaki çizgiler koyulaştırıldı (`app/assets/css/main.css`: kart/ayraç `#a3abb0`, tablo satırı `#c4cace`, alan çerçevesi `#a7afb4`).
-- Form düzeni: Cari + Proje · Adres + Teslim Türü · tahsilat/ödeme/tarih satırı · Plasiyer. Açıklama, satır kartının altında.
+- Form düzeni: Cari + Proje · Adres + Teslim Türü + Nakliye · tahsilat/ödeme/tarih satırı · Plasiyer. Açıklama, satır kartının altında.
 
 ---
 
