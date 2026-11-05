@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Industrial Terminal — DESIGN.md frontmatter'ının Tailwind v4 karşılığı.
+ * shadcn-vue bileşenleri hsl(var(--x)) token'larını, uygulama kodu --color-*
+ * utility token'larını kullanır. Tek görsel dünya: aydınlık işlik + grafit ray.
+ */
+
+@theme {
+  /* Yüzey katmanları (The Flat-By-Default Rule: gölge yok, tonal katman + 1px border) */
+  --color-surface: #f7f9fb;
+  --color-surface-dim: #d8dadc;
+  --color-paper: #ffffff;
+  --color-tier-low: #f2f4f6;
+  --color-tier: #eceef0;
+  --color-tier-high: #e6e8ea;
+  --color-tier-highest: #e0e3e5;
+
+  /* Metin */
+  --color-ink: #191c1e;
+  --color-ink-muted: #5d3f3c;
+
+  /* Sayısal ink rampası — B2B'den port edilen bileşenlerin kullandığı ölçek,
+     Industrial Terminal değerleriyle: 50-300 serin yüzey/çerçeve grileri,
+     400-700 sıcak (umber) ikincil metin ailesi, 800-950 mürekkep ucu. */
+  --color-ink-50: #f7f9fb;
+  --color-ink-100: #f2f4f6;
+  --color-ink-200: #e0e3e5;
+  --color-ink-300: #c9ced1;
+  --color-ink-400: #83706a;
+  --color-ink-500: #7d6a64;
+  --color-ink-600: #5d3f3c;
+  --color-ink-700: #43302d;
+  --color-ink-800: #2d3133;
+  --color-ink-900: #191c1e;
+  --color-ink-950: #101315;
+
+  /* B2B "brand" lacivertinin bu dünyadaki karşılığı: başlıklar mürekkep,
+     tint/çerçeveler sıcak blush (outline-variant ailesi). */
+  --color-brand-50: #fdf4f3;
+  --color-brand-200: #e7bdb8;
+  --color-brand-800: #191c1e;
+  --color-brand-900: #101315;
+
+  /* Grafit ray (sidebar) */
+  --color-graphite: #2d3133;
+  --color-graphite-ink: #eff1f3;
+  --color-graphite-muted: #c6c6c6;
+
+  /* The Red Ladder Rule: aksiyon #e31e24 → hover/pressed #ba0013 */
+  --color-action: #e31e24;
+  --color-action-deep: #ba0013;
+
+  /* Durum üçlüsü (anahtar İngilizce, etiket Türkçe — The Turkish Label Rule) */
+  --color-status-pending-bg: #fef3c7;
+  --color-status-pending-text: #92400e;
+  --color-status-pending-border: #fde68a;
+  --color-status-pending-accent: #d97706;
+  --color-status-shipped-bg: #dbeafe;
+  --color-status-shipped-text: #1e40af;
+  --color-status-shipped-border: #bfdbfe;
+  --color-status-delivered-bg: #d1fae5;
+  --color-status-delivered-text: #065f46;
+  --color-status-delivered-border: #a7f3d0;
+
+  /* shadcn-vue köprü token'ları */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* Sharp-leaning: kontroller 2px (md), büyük kaplar 4px (lg) */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+:root {
+  --background: 210 33% 98%; /* Fog #f7f9fb */
+  --foreground: 204 9% 11%; /* Terminal Ink #191c1e */
+  --card: 0 0% 100%; /* Paper */
+  --card-foreground: 204 9% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 204 9% 11%;
+  --primary: 358 78% 50%; /* Timon Red #e31e24 */
+  --primary-foreground: 0 100% 99%; /* Snow #fffafa */
+  --secondary: 210 12% 93%; /* Tier #eceef0 */
+  --secondary-foreground: 204 9% 11%;
+  --muted: 210 18% 95%; /* Tier-low #f2f4f6 */
+  --muted-foreground: 5 22% 30%; /* Umber Gray #5d3f3c */
+  --accent: 210 12% 93%;
+  --accent-foreground: 204 9% 11%;
+  --destructive: 0 75% 42%; /* Error #ba1a1a — marka kırmızısı DEĞİL */
+  --destructive-foreground: 0 0% 100%;
+  --border: 204 8% 68%; /* koyulaştırıldı (prototip) */
+  --input: 204 8% 68%;
+  --ring: 354 100% 36%; /* Pressed Red #ba0013 */
+  --radius: 0.25rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: #ffdad6; /* primary-fixed — kırmızı ailesinin sakin ucu */
+    color: #410002;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-dim) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-dim);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 4px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-action-deep);
+    outline-offset: 1px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* The Mono Data Rule: ID, tutar, sayaç, kolon başlığı — hep mono, rakamlar hizalı */
+  .font-data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  /* label-md/sm karşılığı: mono + geniş izleme, tablo başlıkları ve nav etiketleri */
+  .text-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+/* DataTable yardımcıları (B2B'den port; aktif sıralama göstergesi kırmızı —
+   The One Red Rule'un "aktif gösterge" kullanımı) */
+@utility table-striped {
+  & tbody tr:nth-child(even):not(:hover) {
+    @apply bg-ink-50/40;
+  }
+}
+
+@utility th-sort {
+  @apply cursor-pointer select-none;
+  &:hover {
+    @apply text-ink;
+  }
+  & .sort-icon {
+    @apply ml-1 text-xs text-ink-300;
+  }
+  &.active .sort-icon {
+    @apply text-action-deep;
+  }
+}
+
+@utility sort-icon {
+  .th-sort & {
+    @apply ml-1 text-xs text-ink-300;
+  }
+  .th-sort.active & {
+    @apply text-action-deep;
+  }
+}
+
+/* Sayfa geçişi (Nuxt pageTransition) */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.12s ease-out;
+}
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+}
+
+/* Prototip: sayfadaki çizgiler (kart, tablo satırı, ayraç, alan çerçevesi) daha koyu. */
+[class*="border-tier"] { border-color: #c4cace; }
+[class*="border-tier-highest"] { border-color: #a3abb0; }

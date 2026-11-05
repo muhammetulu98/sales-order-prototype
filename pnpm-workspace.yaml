@@ -1,0 +1,9 @@
+allowBuilds:
+  esbuild: true
+  vue-demi: true
+
+overrides:
+  # CVE-2026-102422; launch-editor (via @nuxt/devtools) still allows ^1.10.0.
+  shell-quote: ^1.11.0
+  # CVE-2026-41907; exceljs 4.4.0 still pins ^8.3.0 and only calls v4().
+  uuid: ^11.1.1
