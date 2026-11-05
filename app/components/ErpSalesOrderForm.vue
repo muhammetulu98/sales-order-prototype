@@ -412,6 +412,19 @@ const lineTax = (line: EditorLine) => (lineNet(line) * line.taxPercent) / 100;
 // İskontolu birim fiyat: liste fiyatına iskonto kaskadı uygulanmış hâli (KDV hariç) ve KDV dahili.
 const netUnitPrice = (line: EditorLine) => applyDiscountChain(line.unitPrice, discountsOf(line));
 const netUnitPriceWithTax = (line: EditorLine) => (netUnitPrice(line) * (100 + line.taxPercent)) / 100;
+// Birim fiyat yazılınca iskonto oranı değişir: hedef iskontolu birim fiyattan (KDV hariç ya da dahil) İsk 2 geri hesaplanır.
+// İsk 1/İsk 4 sabit, İsk 3 olduğu gibi kalır; liste fiyatının üstüne çıkılamaz (İsk 2 en az 0).
+// İsk 2 değişince satır vadesi ve bütçe de yeniden hesaplanır.
+const applyUnitPrice = (line: EditorLine, raw: string, includesTax: boolean, input: HTMLInputElement) => {
+  const typed = parseDecimal(raw);
+  if (typed !== null && typed >= 0) {
+    const target = includesTax ? (typed * 100) / (100 + line.taxPercent) : typed;
+    const withoutDiscount2 = applyDiscountChain(line.unitPrice, [line.discount1, line.discount3, line.discount4, ...line.otherDiscounts]);
+    line.discount2 = reverseDiscountPercent(withoutDiscount2, target) ?? 0;
+  }
+  // Yazılan değer sınırlandıysa (ör. liste fiyatından büyük) kutu gerçek değeri göstersin.
+  nextTick(() => { input.value = formatUnitPrice(includesTax ? netUnitPriceWithTax(line) : netUnitPrice(line)); });
+};
 const formatUnitPrice = (value: number) =>
   new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(value);
 
@@ -821,9 +834,16 @@ const submit = (asType?: number) => {
                 <td class="py-1.5 pr-2"><Input v-model.number="line.discount3" type="number" step="0.01" class="h-8 text-right" /></td>
                 <td class="py-1.5 pr-2"><Input :model-value="line.discount4" type="number" readonly tabindex="-1" aria-label="İskonto 4 (değiştirilemez)" class="h-8 cursor-default bg-tier text-right" data-testid="discount-4" /></td>
                 <td class="py-1.5 pr-2 text-right font-mono tabular-nums">%{{ line.taxPercent }}</td>
-                <td class="py-1.5 pr-2 text-right font-mono tabular-nums" data-col="unit-price">
-                  <div>{{ formatUnitPrice(netUnitPrice(line)) }}</div>
-                  <div class="text-ink-muted">{{ formatUnitPrice(netUnitPriceWithTax(line)) }}</div>
+                <td class="py-1.5 pr-2" data-col="unit-price">
+                  <!-- Fiyat yazılınca iskonto değişir (İsk 2 geri hesaplanır); iskonto yazılınca fiyat değişir. -->
+                  <Input
+                    type="text" inputmode="decimal" class="mb-1 h-7 text-right font-mono" aria-label="KDV hariç birim fiyat" data-testid="unit-price-excl"
+                    :model-value="formatUnitPrice(netUnitPrice(line))" @change="applyUnitPrice(line, ($event.target as HTMLInputElement).value, false, $event.target as HTMLInputElement)"
+                  />
+                  <Input
+                    type="text" inputmode="decimal" class="h-7 text-right font-mono text-ink-muted" aria-label="KDV dahil birim fiyat" data-testid="unit-price-incl"
+                    :model-value="formatUnitPrice(netUnitPriceWithTax(line))" @change="applyUnitPrice(line, ($event.target as HTMLInputElement).value, true, $event.target as HTMLInputElement)"
+                  />
                 </td>
                 <td class="py-1.5 pr-2" data-col="line-due">
                   <div class="flex gap-1">

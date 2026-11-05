@@ -73,7 +73,7 @@ Sütunlar: Stok Kodu · Barkod · Stok Adı · Birim · Miktar · Liste Fiyatı 
 - **Düzenlenebilir:** Miktar, İsk 2, İsk 3, Birim, Vade.
 - **Birim:** seçenekler katsayıyla yazılır — "Adet", "Koli (24)" (katsayısı 1 olan birimde sayı yazılmaz). Birim değişince liste fiyatı katsayıya göre yeniden hesaplanır.
 - **Miktar:** oklar 1'er artar (min. 1).
-- **Birim fiyat:** iskontolar (kademeli) uygulanmış fiyat; KDV hariç üstte, KDV dahil altta. **Net tutar** da aynı şekilde (miktar × birim fiyat), hariç üstte / dahil altta.
+- **Birim fiyat (iki yönlü):** iskontolar (kademeli) uygulanmış fiyat; KDV hariç üstte, KDV dahil altta. **İskonto yazılınca birim fiyat değişir; birim fiyat (hariç ya da dahil) yazılınca İsk 2 geri hesaplanır** (İsk 1/İsk 3/İsk 4 sabit; liste fiyatından yüksek fiyat yazılamaz, İsk 2 en az 0; İsk 2 2 ondalığa yuvarlanır). İsk 2 değişince satır vadesi ve bütçe de yeniden hesaplanır. `[VARSAYIM]` Fiyattan geri hesap İsk 2'ye yazılır. **Net tutar** da aynı şekilde (miktar × birim fiyat), hariç üstte / dahil altta.
 - **Toplamlar:** Ham Tutar · İskonto · KDV · Genel Toplam.
 
 ### Satır vadesi
